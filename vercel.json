@@ -1,0 +1,17 @@
+{
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
+```
+
+---
+
+### **2. Estrutura da pasta deve ficar assim:**
+```
+cardapio-escolar/
+├── index.html
+└── vercel.json
