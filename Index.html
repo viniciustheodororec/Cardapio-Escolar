@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio Escolar</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Ícones SVG simplificados
+        const Icons = {
+            Share2: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+            Plus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+            Edit2: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+            Trash2: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+            Save: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+            X: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            Users: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            Calendar: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+            ClipboardList: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="15" y2="16"/></svg>,
+        };
+
+        const CardapioEscolar = () => {
+            const [view, setView] = useState('admin');
+            const [alunos, setAlunos] = useState([]);
+            const [cardapioSemanal, setCardapioSemanal] = useState({});
+            const [alunoSelecionado, setAlunoSelecionado] = useState(null);
+            const [editando, setEditando] = useState(false);
+            const [formAluno, setFormAluno] = useState({ nome: '', responsavel: '', sala: '' });
+            const [editandoCardapio, setEditandoCardapio] = useState(false);
+            const [cardapioForm, setCardapioForm] = useState({});
+
+            const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
+            const refeicoes = ['Café da Manhã', 'Almoço', 'Lanche da Tarde'];
+
+            // Carregar dados do LocalStorage
+            useEffect(() => {
+                const alunosData = localStorage.getItem('alunos');
+                const cardapioData = localStorage.getItem('cardapio');
+                
+                if (alunosData) setAlunos(JSON.parse(alunosData));
+                if (cardapioData) setCardapioSemanal(JSON.parse(cardapioData));
+            }, []);
+
+            // Salvar alunos
+            const salvarAlunos = (novosAlunos) => {
+                setAlunos(novosAlunos);
+                localStorage.setItem('alunos', JSON.stringify(novosAlunos));
+            };
+
+            // Salvar cardápio
+            const salvarCardapio = (novoCardapio) => {
+                setCardapioSemanal(novoCardapio);
+                localStorage.setItem('cardapio', JSON.stringify(novoCardapio));
+            };
+
+            // Adicionar/Editar aluno
+            const handleSalvarAluno = () => {
+                if (!formAluno.nome || !formAluno.responsavel || !formAluno.sala) {
+                    alert('Preencha todos os campos!');
+                    return;
+                }
+
+                let novosAlunos;
+                if (editando) {
+                    novosAlunos = alunos.map(a => a.id === formAluno.id ? formAluno : a);
+                } else {
+                    novosAlunos = [...alunos, { ...formAluno, id: Date.now(), observacoes: '' }];
+                }
+                
+                salvarAlunos(novosAlunos);
+                setFormAluno({ nome: '', responsavel: '', sala: '' });
+                setEditando(false);
+            };
+
+            // Excluir aluno
+            const handleExcluirAluno = (id) => {
+                if (confirm('Tem certeza que deseja excluir este aluno?')) {
+                    salvarAlunos(alunos.filter(a => a.id !== id));
+                }
+            };
+
+            // Iniciar edição do cardápio
+            const iniciarEdicaoCardapio = () => {
+                const cardapioInicial = {};
+                diasSemana.forEach(dia => {
+                    cardapioInicial[dia] = {};
+                    refeicoes.forEach(refeicao => {
+                        cardapioInicial[dia][refeicao] = cardapioSemanal[dia]?.[refeicao] || '';
+                    });
+                });
+                setCardapioForm(cardapioInicial);
+                setEditandoCardapio(true);
+            };
+
+            // Salvar cardápio editado
+            const handleSalvarCardapio = () => {
+                salvarCardapio(cardapioForm);
+                setEditandoCardapio(false);
+            };
+
+            // Gerar link do aluno
+            const gerarLink = (aluno) => {
+                const link = `${window.location.origin}${window.location.pathname}?aluno=${aluno.id}`;
+                navigator.clipboard.writeText(link);
+                alert(`Link copiado!\n\nEnvie para ${aluno.responsavel} via WhatsApp:\n\n"Olá ${aluno.responsavel}! Segue o cardápio de ${aluno.nome}: ${link}"`);
+            };
+
+            // Verificar se veio de um link de aluno
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const alunoId = params.get('aluno');
+                if (alunoId) {
+                    const aluno = alunos.find(a => a.id === parseInt(alunoId));
+                    if (aluno) {
+                        setAlunoSelecionado(aluno);
+                        setView('parent');
+                    }
+                }
+            }, [alunos]);
+
+            // Salvar observações do aluno
+            const salvarObservacoes = (obs) => {
+                const novosAlunos = alunos.map(a => 
+                    a.id === alunoSelecionado.id ? { ...a, observacoes: obs } : a
+                );
+                salvarAlunos(novosAlunos);
+                setAlunoSelecionado({ ...alunoSelecionado, observacoes: obs });
+            };
+
+            // Exportar dados
+            const exportarDados = () => {
+                const dados = {
+                    alunos,
+                    cardapioSemanal,
+                    dataExportacao: new Date().toISOString(),
+                    versao: '1.0'
+                };
+                
+                const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `backup-cardapio-escolar-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                alert('✅ Backup baixado com sucesso!');
+            };
+
+            // Importar dados
+            const importarDados = (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const dados = JSON.parse(e.target.result);
+                        
+                        if (!dados.alunos || !dados.cardapioSemanal) {
+                            alert('❌ Arquivo de backup inválido!');
+                            return;
+                        }
+
+                        if (confirm(`Restaurar backup de ${new Date(dados.dataExportacao).toLocaleString('pt-BR')}?\nAlunos: ${dados.alunos.length}\n\n⚠️ Isso substituirá os dados atuais!`)) {
+                            salvarAlunos(dados.alunos);
+                            salvarCardapio(dados.cardapioSemanal);
+                            alert('✅ Backup restaurado!');
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        alert('❌ Erro ao ler o arquivo.');
+                    }
+                };
+                reader.readAsText(file);
+                event.target.value = '';
+            };
+
+            // VIEW ADMINISTRATIVA
+            if (view === 'admin') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                                <h1 className="text-3xl font-bold text-indigo-600 mb-2">Sistema de Cardápio Escolar</h1>
+                                <p className="text-gray-600">Gerencie alunos e cardápios semanais</p>
+                            </div>
+
+                            <div className="flex gap-2 mb-6 flex-wrap">
+                                <button className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md">
+                                    <Icons.Users />
+                                    Alunos ({alunos.length})
+                                </button>
+                                <button onClick={iniciarEdicaoCardapio} className="flex items-center gap-2 bg-white text-indigo-600 px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-indigo-50">
+                                    <Icons.Calendar />
+                                    Editar Cardápio Semanal
+                                </button>
+                                <button onClick={exportarDados} className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-green-700">
+                                    <Icons.Save />
+                                    Exportar Backup
+                                </button>
+                                <label className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-orange-700 cursor-pointer">
+                                    <Icons.Plus />
+                                    Importar Backup
+                                    <input type="file" accept=".json" onChange={importarDados} className="hidden" />
+                                </label>
+                            </div>
+
+                            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">
+                                    {editando ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <input type="text" placeholder="Nome do Aluno" value={formAluno.nome} onChange={(e) => setFormAluno({ ...formAluno, nome: e.target.value })} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                                    <input type="text" placeholder="Nome do Responsável" value={formAluno.responsavel} onChange={(e) => setFormAluno({ ...formAluno, responsavel: e.target.value })} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                                    <input type="text" placeholder="Sala (ex: 3ºA)" value={formAluno.sala} onChange={(e) => setFormAluno({ ...formAluno, sala: e.target.value })} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={handleSalvarAluno} className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-semibold">
+                                        <Icons.Save />
+                                        {editando ? 'Atualizar' : 'Cadastrar'}
+                                    </button>
+                                    {editando && (
+                                        <button onClick={() => { setFormAluno({ nome: '', responsavel: '', sala: '' }); setEditando(false); }} className="flex items-center gap-2 bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                                            <Icons.X />
+                                            Cancelar
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">Alunos Cadastrados</h2>
+                                {alunos.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">Nenhum aluno cadastrado ainda</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {alunos.map(aluno => (
+                                            <div key={aluno.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                <div className="flex-1">
+                                                    <h3 className="font-semibold text-gray-800">{aluno.nome}</h3>
+                                                    <p className="text-sm text-gray-600">Responsável: {aluno.responsavel} | Sala: {aluno.sala}</p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => gerarLink(aluno)} className="flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+                                                        <Icons.Share2 />
+                                                        Copiar Link
+                                                    </button>
+                                                    <button onClick={() => { setFormAluno(aluno); setEditando(true); }} className="p-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">
+                                                        <Icons.Edit2 />
+                                                    </button>
+                                                    <button onClick={() => handleExcluirAluno(aluno.id)} className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                                                        <Icons.Trash2 />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {editandoCardapio && (
+                                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                                    <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-screen overflow-y-auto p-6">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h2 className="text-2xl font-bold text-gray-800">Editar Cardápio Semanal</h2>
+                                            <button onClick={() => setEditandoCardapio(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                                                <Icons.X />
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="space-y-6">
+                                            {diasSemana.map(dia => (
+                                                <div key={dia} className="border border-gray-200 rounded-lg p-4">
+                                                    <h3 className="font-bold text-lg text-indigo-600 mb-3">{dia}</h3>
+                                                    <div className="space-y-3">
+                                                        {refeicoes.map(refeicao => (
+                                                            <div key={refeicao}>
+                                                                <label className="block text-sm font-semibold text-gray-700 mb-1">{refeicao}</label>
+                                                                <textarea value={cardapioForm[dia]?.[refeicao] || ''} onChange={(e) => setCardapioForm({ ...cardapioForm, [dia]: { ...cardapioForm[dia], [refeicao]: e.target.value } })} placeholder="Ex: Pão com manteiga, suco de laranja, fruta" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" rows="2" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-6 flex justify-end gap-3">
+                                            <button onClick={() => setEditandoCardapio(false)} className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Cancelar</button>
+                                            <button onClick={handleSalvarCardapio} className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">
+                                                <Icons.Save />
+                                                Salvar Cardápio
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+
+            // VIEW DOS PAIS
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4">
+                    <div className="max-w-2xl mx-auto">
+                        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                            <div className="text-center mb-4">
+                                <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <span className="text-3xl text-white font-bold">{alunoSelecionado?.nome.charAt(0)}</span>
+                                </div>
+                                <h1 className="text-2xl font-bold text-gray-800">{alunoSelecionado?.nome}</h1>
+                                <p className="text-gray-600">Sala: {alunoSelecionado?.sala}</p>
+                                <p className="text-sm text-gray-500">Responsável: {alunoSelecionado?.responsavel}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <Icons.ClipboardList />
+                                Cardápio da Semana
+                            </h2>
+                            
+                            {Object.keys(cardapioSemanal).length === 0 ? (
+                                <p className="text-gray-500 text-center py-8">Cardápio ainda não disponível</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {diasSemana.map(dia => (
+                                        <div key={dia} className="border-l-4 border-indigo-600 pl-4 py-2">
+                                            <h3 className="font-bold text-lg text-indigo-600 mb-2">{dia}</h3>
+                                            {refeicoes.map(refeicao => (
+                                                cardapioSemanal[dia]?.[refeicao] && (
+                                                    <div key={refeicao} className="mb-2">
+                                                        <p className="font-semibold text-sm text-gray-700">{refeicao}:</p>
+                                                        <p className="text-gray-600 text-sm">{cardapioSemanal[dia][refeicao]}</p>
+                                                    </div>
+                                                )
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">Observações / Restrições Alimentares</h2>
+                            <textarea value={alunoSelecionado?.observacoes || ''} onChange={(e) => salvarObservacoes(e.target.value)} placeholder="Ex: Alergia a lactose, não come carne vermelha, etc." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" rows="4" />
+                            <p className="text-xs text-gray-500 mt-2">As informações são salvas automaticamente e compartilhadas com a escola</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<CardapioEscolar />, document.getElementById('root'));
+    </script>
+</body>
+</html>
